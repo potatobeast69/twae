@@ -36,31 +36,33 @@ jobs:
           echo "Swift: $(swift --version)"
           echo "macOS: $(sw_vers -productVersion)"
 
-      - name: 🔨 Сборка проекта
-        id: build
-        continue-on-error: true
-        run: |
-          if [ -f "Package.swift" ]; then
-            echo "📦 Swift Package обнаружен"
-            swift build
-          elif ls *.xcworkspace 1> /dev/null 2>&1; then
-            WORKSPACE=$(ls *.xcworkspace | head -n 1)
-            SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | grep -A 1 "Schemes:" | tail -n 1 | xargs)
-            echo "🔨 Собираю workspace: $WORKSPACE, схема: $SCHEME"
-            xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" \
-              -destination "platform=iOS Simulator,name=iPhone 16" \
-              -configuration Debug clean build
-          elif ls *.xcodeproj 1> /dev/null 2>&1; then
-            PROJECT=$(ls *.xcodeproj | head -n 1)
-            SCHEME=$(xcodebuild -project "$PROJECT" -list | grep -A 1 "Schemes:" | tail -n 1 | xargs)
-            echo "🔨 Собираю проект: $PROJECT, схема: $SCHEME"
-            xcodebuild -project "$PROJECT" -scheme "$SCHEME" \
-              -destination "platform=iOS Simulator,name=iPhone 16" \
-              -configuration Debug clean build
-          else
-            echo "❌ Swift проект не найден"
-            exit 1
-          fi
+        - name: 🔨 Сборка проекта
+          id: build
+          continue-on-error: true
+          run: |
+            if [ -f "Package.swift" ]; then
+              echo "📦 Swift Package обнаружен"
+              swift build
+            elif find . -maxdepth 1 -name "*.xcworkspace" | grep -q .; then
+              WORKSPACE=$(find . -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+              WORKSPACE_NAME=$(basename "$WORKSPACE")
+              SCHEME=$(xcodebuild -workspace "$WORKSPACE_NAME" -list | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+              echo "🔨 Собираю workspace: $WORKSPACE_NAME, схема: $SCHEME"
+              xcodebuild -workspace "$WORKSPACE_NAME" -scheme "$SCHEME" \
+                -destination "platform=iOS Simulator,name=iPhone 16" \
+                -configuration Debug clean build
+            elif find . -maxdepth 1 -name "*.xcodeproj" | grep -q .; then
+              PROJECT=$(find . -maxdepth 1 -name "*.xcodeproj" | head -n 1)
+              PROJECT_NAME=$(basename "$PROJECT")
+              SCHEME=$(xcodebuild -project "$PROJECT_NAME" -list | grep -A 1 "Schemes:" | tail -n 1 | xargs)
+              echo "🔨 Собираю проект: $PROJECT_NAME, схема: $SCHEME"
+              xcodebuild -project "$PROJECT_NAME" -scheme "$SCHEME" \
+                -destination "platform=iOS Simulator,name=iPhone 16" \
+                -configuration Debug clean build
+            else
+              echo "❌ Swift проект не найден"
+              exit 1
+            fi
 
       - name: 📊 Результат сборки
         run: |
